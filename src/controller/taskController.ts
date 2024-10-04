@@ -199,14 +199,19 @@ export const deleteTask = async (req: CustomRequest, res: Response): Promise<voi
     }
 };
 
-//get tasks for the month
+//get tasks
+
 export const getTasks = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
         const { managerId } = req.params;
-        const { date } = req.body;
+        const { date, role } = req.body;
+
+        console.log('Role:', role);
+        console.log('Manager/Employee ID:', managerId);
+        console.log('Received date:', date);
 
         if (!Types.ObjectId.isValid(managerId)) {
-            res.status(400).json({ message: "Invalid manager ID" });
+            res.status(400).json({ message: "Invalid ID" });
             return;
         }
 
@@ -218,17 +223,35 @@ export const getTasks = async (req: CustomRequest, res: Response): Promise<void>
 
         const year = parsedDate.getUTCFullYear();
         const month = parsedDate.getUTCMonth();
-
-        const startDate = new Date(Date.UTC(year, month, 1));
+        const startDate = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
         const endDate = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
 
-        const tasks = await Task.find({
-            createdBy: managerId,
-            date: { $gte: startDate, $lte: endDate }
-        });
+        console.log('Start date:', startDate.toISOString());
+        console.log('End date:', endDate.toISOString());
+
+        let query;
+
+        if (role === 'Manager') {
+            query = {
+                createdBy: new Types.ObjectId(managerId),
+                date: { $gte: startDate, $lte: endDate }
+            };
+        } else if (role === 'Employee') {
+            query = {
+                assignedTo: new Types.ObjectId(managerId),
+                date: { $gte: startDate, $lte: endDate }
+            };
+        } else {
+            res.status(400).json({ message: "Invalid role" });
+            return;
+        }
+
+        const tasks = await Task.find(query);
+
+        console.log('Tasks found:', tasks.length);
 
         if (tasks.length === 0) {
-            res.status(404).json({ message: "No tasks found for the specified month" });
+            res.status(404).json({ message: `No tasks found for the specified month for the ${role}` });
             return;
         }
 
