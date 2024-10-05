@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import Task from "../model/taskModel";
-import {IUser} from "../model/userModel";
+import User,{IUser} from "../model/userModel";
 import { roleCheck } from '../middleware/roleMiddleware';
 import mongoose, { Types } from "mongoose";
 import jwt from 'jsonwebtoken';
@@ -23,6 +23,13 @@ export const createTask = async (req: CustomRequest, res: Response): Promise<voi
             createdBy: managerId
         });
         await task.save();
+
+        if (employeeIds && employeeIds.length) {
+            await User.updateMany(
+                { _id: { $in: employeeIds }, managerId: { $exists: false } },
+                { $set: { managerId: managerId } }
+            );
+        }
 
         res.status(201).json({ message: "Task created successfully", task });
     } catch (error: unknown) {

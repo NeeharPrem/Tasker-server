@@ -100,9 +100,15 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
     try {
         const { managerId } = req.params;
+        const users = await User.find({
+            $or: [
+                { managerId: managerId },
+                { managerId: { $exists: false } },
+                { managerId: null }
+            ],
+            _id: { $ne: managerId }
+        }).select(['name', '_id']);
 
-        const users = await User.find({ managerId: managerId, _id: { $ne: managerId } }).select(['name', '_id']);
-        
         if (!users.length) {
             res.status(404).json({
                 success: false,
